@@ -1,8 +1,14 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -33,12 +39,22 @@ type Buyer struct {
 	TrustScore float32 `json:"trustscore"`
 }
 
+type Subscribe struct {
+	dataoffer DataOffer
+	enc_key   string
+	mac_key   string
+	buyerkeys []string
+}
+
 //var sellerList []string
 //var buyerList []string
 
-var DataStream map[string][]DataOffer
-var sellerList map[string]Seller
-var buyerList map[string]Buyer
+var DataStream map[string][]DataOffer       // to list the offer on marketplace
+var sellerList map[string]Seller            // to retrieve a list of sellers
+var buyerList map[string]Buyer              // to retrieve a list of buyers
+var tokenList map[int64]string              // to get token list during authentication
+var subscriptionList map[string][]Subscribe //to create a list of subcribers inluding keys to be shared
+var token_counter int64 = 1
 
 //================Functions===================
 
@@ -48,6 +64,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	DataStream := make(map[string][]DataOffer)
 	sellerList := make(map[string]Seller)
 	buyerList := make(map[string]Buyer)
+	tokenList := make(map[int64]string)
 
 	dataJSON, err := json.Marshal(DataStream)
 	if err != nil {
@@ -58,6 +75,10 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		return err
 	}
 	buyerJSON, err := json.Marshal(buyerList)
+	if err != nil {
+		return err
+	}
+	tokenJSON, err := json.Marshal(tokenList)
 	if err != nil {
 		return err
 	}
@@ -73,6 +94,11 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 	}
 
 	err = ctx.GetStub().PutState("Buyers", buyerJSON)
+	if err != nil {
+		return fmt.Errorf("failed to put to world state. %v", err)
+	}
+
+	err = ctx.GetStub().PutState("TokenList", tokenJSON)
 	if err != nil {
 		return fmt.Errorf("failed to put to world state. %v", err)
 	}
@@ -140,6 +166,7 @@ func (s *SmartContract) BuyerExists(ctx contractapi.TransactionContextInterface,
 	return buyerJSON != nil, nil
 }
 
+//create a a list of data Offers
 func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid int, topic string, mode int, price float32) error {
 
 	exists, err := s.DataOfferExists(ctx, id, sid)
@@ -147,10 +174,11 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 	if exists {
-		return fmt.Errorf("the seller %s already exists", id)
+		return fmt.Errorf("the data offer %s already exists", id)
 	}
 
 	dataoffer := DataOffer{SellerID: id, StreamID: sid, Topic: topic, Mode: mode, Price: price}
+	s.CreateSubscriberList(dataoffer)
 
 	DataStream[id] = append(DataStream[id], dataoffer)
 	dataJSON, err := json.Marshal(DataStream)
@@ -158,6 +186,10 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 	return ctx.GetStub().PutState("datalisting", dataJSON)
+
+}
+
+func (s *SmartContract) CreateSubscriberList(ctx contractapi.TransactionContextInterface, dataoffer DataOffer) error {
 
 }
 
@@ -179,3 +211,32 @@ func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterf
 
 	return dataJSON != nil, nil
 }
+
+// Generates tokens for data uploading and downloading by sellers and buyers respectively
+func (s *SmartContract) GenerateToken(ctx contractapi.TransactionContextInterface, reqID string) string {
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(reqID), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hasher := md5.New()
+	hasher.Write(hash)
+
+	return hex.EncodeToString(hasher.Sum(nil))
+
+}
+
+// Returns token to both seller and buyer for uploading and downloading data
+func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface, id string, sid int, topic string, mode int, price float32) (int64, string) {
+
+	reqID := id + strconv.Itoa(sid) + topic + strconv.Itoa(mode) + strconv.Itoa(price)
+	token := s.GenerateToken(reqID)
+
+	tokenList[token_counter] = token
+	token_counter++
+
+	return token_counter, token
+}
+
+func (S *SmartContract) AddToSubscribersList(ctx contractapi.TransactionContextInterface)
