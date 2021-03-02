@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,37 +24,29 @@ type SmartContract struct {
 // mode 0 = stream, mode 1 = batch,
 type DataOffer struct {
 	SellerID string  `json:"ID"`
-	StreamID int     `json:"streamID"`
+	StreamID string  `json:"streamID"`
 	Topic    string  `json:"topic"`
 	Mode     int     `json:"mode"`
-	Price    float32 `json:"price"`
+	Price    float64 `json:"price"`
+	EncKey   string  `json:"enc_key"`
+	MacKey   string  `json:"mac_key"`
 }
 
 type Seller struct {
 	SellerID   string  `json:"ID"`
-	TrustScore float32 `json:"trustscore"`
+	TrustScore float64 `json:"trustscore"`
 }
 
 type Buyer struct {
 	BuyerID    string  `json:"ID"`
-	TrustScore float32 `json:"trustscore"`
+	TrustScore float64 `json:"trustscore"`
 }
 
-type Subscribe struct {
-	dataoffer DataOffer
-	enc_key   string
-	mac_key   string
-	buyerkeys []string
-}
-
-//var sellerList []string
-//var buyerList []string
-
-var DataStream map[string][]DataOffer       // to list the offer on marketplace
-var sellerList map[string]Seller            // to retrieve a list of sellers
-var buyerList map[string]Buyer              // to retrieve a list of buyers
-var tokenList map[int64]string              // to get token list during authentication
-var subscriptionList map[string][]Subscribe //to create a list of subcribers inluding keys to be shared
+var dataStream map[string][]DataOffer    // to list the offer on marketplace
+var sellerList map[string]Seller         // to retrieve a list of sellers
+var buyerList map[string]Buyer           // to retrieve a list of buyers
+var tokenList map[int64]string           // to get token list during authentication
+var subscriptionList map[string][]string //to create a list of subcribers inluding keys to be shared
 var token_counter int64 = 1
 
 //================Functions===================
@@ -61,12 +54,13 @@ var token_counter int64 = 1
 //InitLedger adds declarations of data structures
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 
-	DataStream := make(map[string][]DataOffer)
+	dataStream := make(map[string][]DataOffer)
 	sellerList := make(map[string]Seller)
 	buyerList := make(map[string]Buyer)
 	tokenList := make(map[int64]string)
+	subscriptionList := make(map[string][]string)
 
-	dataJSON, err := json.Marshal(DataStream)
+	dataJSON, err := json.Marshal(dataStream)
 	if err != nil {
 		return err
 	}
@@ -79,6 +73,11 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		return err
 	}
 	tokenJSON, err := json.Marshal(tokenList)
+	if err != nil {
+		return err
+	}
+
+	subscriptionJSON, err := json.Marshal(subscriptionList)
 	if err != nil {
 		return err
 	}
@@ -103,10 +102,17 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 		return fmt.Errorf("failed to put to world state. %v", err)
 	}
 
+	err = ctx.GetStub().PutState("SubscriptionList", subscriptionJSON)
+	if err != nil {
+		return fmt.Errorf("failed to put to world state. %v", err)
+	}
+
+	return nil
+
 }
 
 //RegisterSeller adds a new seller to the world state with given details.
-func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterface, id string, trustscore float32) error {
+func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterface, id string, trustscore float64) error {
 
 	exists, err := s.SellerExists(ctx, id)
 	if err != nil {
@@ -126,7 +132,7 @@ func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterfa
 }
 
 //RegisterBuyer adds a new buyer to the world state with given details.
-func (s *SmartContract) RegisterBuyer(ctx contractapi.TransactionContextInterface, id string, trustscore float32) error {
+func (s *SmartContract) RegisterBuyer(ctx contractapi.TransactionContextInterface, id string, trustscore float64) error {
 
 	exists, err := s.BuyerExists(ctx, id)
 	if err != nil {
@@ -167,7 +173,7 @@ func (s *SmartContract) BuyerExists(ctx contractapi.TransactionContextInterface,
 }
 
 //create a a list of data Offers
-func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid int, topic string, mode int, price float32) error {
+func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64, enc_key string, mac_key string) error {
 
 	exists, err := s.DataOfferExists(ctx, id, sid)
 	if err != nil {
@@ -177,11 +183,10 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("the data offer %s already exists", id)
 	}
 
-	dataoffer := DataOffer{SellerID: id, StreamID: sid, Topic: topic, Mode: mode, Price: price}
-	s.CreateSubscriberList(dataoffer)
+	dataoffer := DataOffer{SellerID: id, StreamID: sid, Topic: topic, Mode: mode, Price: price, EncKey: enc_key, MacKey: mac_key}
 
-	DataStream[id] = append(DataStream[id], dataoffer)
-	dataJSON, err := json.Marshal(DataStream)
+	dataStream[id] = append(dataStream[id], dataoffer)
+	dataJSON, err := json.Marshal(dataStream)
 	if err != nil {
 		return err
 	}
@@ -189,24 +194,20 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 
 }
 
-func (s *SmartContract) CreateSubscriberList(ctx contractapi.TransactionContextInterface, dataoffer DataOffer) error {
-
-}
-
 // DataOffer returns true when stream with given ID exists in world state
-func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterface, id string, sid int) (bool, error) {
+func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterface, id string, sid string) (bool, error) {
 	dataJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
-		return fmt.Errorf("failed to read from world state: %v", err)
+		return false, fmt.Errorf("failed to read from world state: %v", err)
 	}
 	if dataJSON == nil {
-		return fmt.Errorf("the data %s does not exist", id)
+		return false, fmt.Errorf("the data %s does not exist", id)
 	}
 
 	var data DataOffer
 	err = json.Unmarshal(dataJSON, &data)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	return dataJSON != nil, nil
@@ -228,10 +229,10 @@ func (s *SmartContract) GenerateToken(ctx contractapi.TransactionContextInterfac
 }
 
 // Returns token to both seller and buyer for uploading and downloading data
-func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface, id string, sid int, topic string, mode int, price float32) (int64, string) {
+func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64) (int64, string) {
 
-	reqID := id + strconv.Itoa(sid) + topic + strconv.Itoa(mode) + strconv.Itoa(price)
-	token := s.GenerateToken(reqID)
+	reqID := id + sid + topic + strconv.Itoa(mode) + strconv.FormatFloat(price, 'E', -1, 64)
+	token := s.GenerateToken(ctx, reqID)
 
 	tokenList[token_counter] = token
 	token_counter++
@@ -239,4 +240,30 @@ func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface
 	return token_counter, token
 }
 
-func (S *SmartContract) AddToSubscribersList(ctx contractapi.TransactionContextInterface)
+// adds the buyers to the subscription list for a streamID
+func (s *SmartContract) AddSubcriberBuyers(ctx contractapi.TransactionContextInterface, sid string, buyerID string) error {
+
+	exists := itemExists(subscriptionList[sid], buyerID)
+	if exists {
+		return fmt.Errorf("the buyerr %s already subscribed", buyerID)
+	}
+	subscriptionList[sid] = append(subscriptionList[sid], buyerID)
+
+	return nil
+}
+
+func itemExists(slice interface{}, item interface{}) bool {
+	s := reflect.ValueOf(slice)
+
+	if s.Kind() != reflect.Slice {
+		panic("Invalid data-type")
+	}
+
+	for i := 0; i < s.Len(); i++ {
+		if s.Index(i).Interface() == item {
+			return true
+		}
+	}
+
+	return false
+}

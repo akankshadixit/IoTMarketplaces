@@ -1,0 +1,16 @@
+{
+    "sellerID" : [{
+        "Subscription": {
+            "dataoffer" : {
+                "sid": "sid1",
+                "mode": "1",
+                "topic" : "temp",
+                "price": "20"
+            },
+            "enc_key": "xyz",
+            "buyer_list":[
+                "abc","pqr","cvb"
+            ]
+        }
+    }]
+}
