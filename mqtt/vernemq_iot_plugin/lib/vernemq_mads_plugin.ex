@@ -1,6 +1,15 @@
 defmodule VernemqIoTPlugin do
 
-  def auth_on_register(_peer, {_mountpoint, clientid}, username, _password, _clean_session?) do
+  def auth_on_register(_peer, {_mountpoint, clientid}, username, password, _clean_session?) do
+    path = "/mqtt-auth-on-register"
+
+    url = server_url() <> path
+    params = %{clientid: clientid, username: username, password: password}
+
+    result = HTTPoison.post(url, params)
+    require IEx
+    IEx.pry
+
     IO.puts("*** auth_on_register #{clientid} / #{username}")
     :ok
   end
@@ -60,5 +69,10 @@ defmodule VernemqIoTPlugin do
   def on_offline_message({_mountpoint, clientid}, _qos, topic, payload, _retain?) do
     IO.puts("*** on_offline_message #{clientid} / #{topic} / #{payload}")
     :ok
+  end
+
+
+  defp server_url() do
+    Application.get_env(:vernemq_iot_plugin, :server_url)
   end
 end

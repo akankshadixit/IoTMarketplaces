@@ -30,6 +30,7 @@ defmodule VernemqIoTPlugin.MixProject do
       mod: {VernemqIoTPlugin.Application, []},
       env: [
         vmq_plugin_hooks(),
+        server_url: System.get_env("SERVER_URL", "localhost:8080"),
       ]
     ]
   end
@@ -58,7 +59,8 @@ defmodule VernemqIoTPlugin.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-      # {:sibling_app_in_umbrella, in_umbrella: true}
+      # {:sibling_app_in_umbrella, in_umbrella: true},
+      {:httpoison, "~> 1.8"}
     ]
   end
 end
