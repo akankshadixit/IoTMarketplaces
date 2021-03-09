@@ -5,13 +5,25 @@ defmodule VernemqIoTPlugin do
 
     url = server_url() <> path
     params = %{clientid: clientid, username: username, password: password}
-
-    result = HTTPoison.post(url, params)
-    require IEx
-    IEx.pry
-
-    IO.puts("*** auth_on_register #{clientid} / #{username}")
+    params = Jason.encode!(params)
+    headers = ["Accept": "Application/json; Charset=utf-8"]
+    result = HTTPoison.post(url, params, headers)
+    parse_auth_register(result)
     :ok
+  end
+
+  defp parse_auth_register({:ok, message}) do
+    message = Jason.decode!(message.body)
+    if message == "authenticated" do
+      :ok
+    else
+      {:error, "authentication failed"}
+    end
+  end
+
+  defp parse_auth_register({:error, message}) do
+    IO.inspect(message)
+    {:error, "some error occurred in registration"}
   end
 
   def on_register(_peer, {_mountpoint, clientid}, username) do
@@ -70,7 +82,6 @@ defmodule VernemqIoTPlugin do
     IO.puts("*** on_offline_message #{clientid} / #{topic} / #{payload}")
     :ok
   end
-
 
   defp server_url() do
     Application.get_env(:vernemq_iot_plugin, :server_url)
