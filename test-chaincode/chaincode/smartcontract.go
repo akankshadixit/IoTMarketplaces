@@ -54,11 +54,11 @@ var token_counter int64 = 1
 //InitLedger adds declarations of data structures
 func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 
-	dataStream := make(map[string][]DataOffer)
-	sellerList := make(map[string]Seller)
-	buyerList := make(map[string]Buyer)
-	tokenList := make(map[int64]string)
-	subscriptionList := make(map[string][]string)
+	dataStream = make(map[string][]DataOffer)
+	sellerList = make(map[string]Seller)
+	buyerList = make(map[string]Buyer)
+	tokenList = make(map[int64]string)
+	subscriptionList = make(map[string][]string)
 
 	dataJSON, err := json.Marshal(dataStream)
 	if err != nil {
