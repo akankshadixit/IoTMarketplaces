@@ -2,6 +2,7 @@ package chaincode
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -39,6 +40,13 @@ type Seller struct {
 type Buyer struct {
 	BuyerID    string  `json:"ID"`
 	TrustScore float64 `json:"trustscore"`
+}
+
+type Subscription struct {
+	SubscriptionID string `json:"subID"`
+	BuyerID        string `json:"ID"`
+	StreamID       string `json:"streamID"`
+	DownloadToken  string `json:"token"`
 }
 
 //================Functions===================
@@ -142,12 +150,12 @@ func (s *SmartContract) ActorExists(ctx contractapi.TransactionContextInterface,
 //create a a list of data Offers
 func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64, enc_key string, mac_key string) error {
 
-	exists, err := s.DataOfferExists(ctx, id)
+	exists, err := s.DataOfferExists(ctx, sid)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return fmt.Errorf("the seller %s already exists", id)
+		return fmt.Errorf("the data offer %s already exists", sid)
 	}
 
 	dataUploadToken := s.RequestToken(ctx, id, sid, topic, mode, price)
@@ -166,13 +174,19 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return err
 	}
 
-	return ctx.GetStub().PutState(id, offerJSON)
+	return ctx.GetStub().PutState(sid, offerJSON)
 
 }
 
 // DataOffer returns true when stream with given ID exists in world state
-func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterface, id string, sid string) (bool, error) {
+func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterface, sid string) (bool, error) {
 
+	dataJSON, err := ctx.GetStub().GetState(sid)
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	return dataJSON != nil, nil
 }
 
 // Generates tokens for data uploading and downloading by sellers and buyers respectively
@@ -197,6 +211,48 @@ func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface
 }
 
 // adds the buyers to the subscription list for a streamID
-func (s *SmartContract) AddSubcriberBuyers(ctx contractapi.TransactionContextInterface, sid string, buyerID string) error {
+func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string, topic string, mode int, price float64) error {
 
+	subscriptionID := s.GenerateHash(ctx, (sid + buyerID))
+
+	exists, err := s.subcriptionExists(ctx, subscriptionID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the subscription %s does not exist", subscriptionID)
+	}
+	token := s.RequestToken(ctx, buyerID, sid, topic, mode, price)
+
+	subscription := Subscription{
+		SubscriptionID: subscriptionID,
+		StreamID:       sid,
+		BuyerID:        buyerID,
+		DownloadToken:  token,
+	}
+
+	valueJSON, err := json.Marshal(subscription)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(subscriptionID, valueJSON)
+
+}
+
+func (s *SmartContract) GenerateHash(ctx contractapi.TransactionContextInterface, shaString string) string {
+	h := sha1.New()
+	h.Write([]byte(shaString))
+	sha1_hash := hex.EncodeToString(h.Sum(nil))
+	return sha1_hash
+}
+
+func (s *SmartContract) subcriptionExists(ctx contractapi.TransactionContextInterface, subid string) (bool, error) {
+
+	dataJSON, err := ctx.GetStub().GetState(subid)
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	return dataJSON != nil, nil
 }
