@@ -16,7 +16,6 @@ func getContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
 
 	ccpPath := filepath.Join(
 		"..",
-		"..",
 		"networks",
 		"single-node",
 		"organizations",
@@ -41,7 +40,7 @@ func getContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
 		os.Exit(1)
 	}
 
-	contract := network.GetContract("fabcar")
+	contract := network.GetContract("basic")
 
 	return contract, gw
 }
@@ -66,7 +65,6 @@ func wallet() *gateway.Wallet {
 
 func populateWallet(wallet *gateway.Wallet) error {
 	credPath := filepath.Join(
-		"..",
 		"..",
 		"networks",
 		"single-node",
