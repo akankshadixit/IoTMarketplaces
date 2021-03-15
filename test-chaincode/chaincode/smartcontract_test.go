@@ -1,13 +1,8 @@
 package chaincode_test
 
 import (
-	"marketplace/chaincode"
-	"testing"
-
 	"github.com/hyperledger/fabric-chaincode-go/shim"
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
-	"github.com/hyperledger/fabric-samples/asset-transfer-basic/chaincode-go/chaincode/mocks"
-	"github.com/stretchr/testify/require"
 )
 
 type transactionContext interface {
@@ -24,7 +19,7 @@ type stateQueryIterator interface {
 	shim.StateQueryIteratorInterface
 }
 
-func TestInitLedger(t *testing.T) {
+/*func TestInitLedger(t *testing.T) {
 	chaincodeStub := &mocks.ChaincodeStub{}
 	transactionContext := &mocks.TransactionContext{}
 	transactionContext.GetStubReturns(chaincodeStub)
@@ -34,3 +29,4 @@ func TestInitLedger(t *testing.T) {
 
 	require.NoError(t, err)
 }
+*/

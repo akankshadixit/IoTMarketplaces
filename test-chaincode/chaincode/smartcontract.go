@@ -35,11 +35,13 @@ type DataOffer struct {
 type Seller struct {
 	SellerID   string  `json:"ID"`
 	TrustScore float64 `json:"trustscore"`
+	Token      string  `json: SellerToken`
 }
 
 type Buyer struct {
 	BuyerID    string  `json:"ID"`
 	TrustScore float64 `json:"trustscore"`
+	Token      string  `json: BuyerToken`
 }
 
 type Subscription struct {
@@ -52,10 +54,10 @@ type Subscription struct {
 //================Functions===================
 
 //InitLedger adds declarations of data structures
-func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+/*func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
 
 	sellers := []Seller{
-		{SellerID: "seller1", TrustScore: 5},
+		{SellerID: "seller1", TrustScore: 5, SellerToken: : GenerateHash(ctx, SellerID)},
 		{SellerID: "seller2", TrustScore: 3},
 	}
 
@@ -90,7 +92,7 @@ func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) 
 
 	return nil
 
-}
+}*/
 
 //RegisterSeller adds a new seller to the world state with given details.
 func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterface, id string, trustscore float64) error {
@@ -106,6 +108,7 @@ func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterfa
 	seller := Seller{
 		SellerID:   id,
 		TrustScore: trustscore,
+		Token:      generateHash(id),
 	}
 	sellerJSON, err := json.Marshal(seller)
 	if err != nil {
@@ -128,6 +131,7 @@ func (s *SmartContract) RegisterBuyer(ctx contractapi.TransactionContextInterfac
 	buyer := Buyer{
 		BuyerID:    id,
 		TrustScore: trustscore,
+		Token:      generateHash(id),
 	}
 	buyerJSON, err := json.Marshal(buyer)
 	if err != nil {
@@ -158,7 +162,7 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return fmt.Errorf("the data offer %s already exists", sid), ""
 	}
 
-	dataUploadToken := s.RequestToken(ctx, id, sid, topic, mode, price)
+	dataUploadToken := RequestToken(id, sid, topic, mode, price)
 	offer := DataOffer{
 		SellerID:    id,
 		StreamID:    sid,
@@ -190,7 +194,7 @@ func (s *SmartContract) DataOfferExists(ctx contractapi.TransactionContextInterf
 }
 
 // Generates tokens for data uploading and downloading by sellers and buyers respectively
-func (s *SmartContract) GenerateToken(ctx contractapi.TransactionContextInterface, reqID string) string {
+func generateToken(reqID string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(reqID), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatal(err)
@@ -203,9 +207,9 @@ func (s *SmartContract) GenerateToken(ctx contractapi.TransactionContextInterfac
 }
 
 // Returns token to both seller and buyer for uploading and downloading data
-func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64) string {
+func RequestToken(id string, sid string, topic string, mode int, price float64) string {
 	reqID := id + sid + topic + strconv.Itoa(mode) + strconv.FormatFloat(price, 'E', -1, 64)
-	token := s.GenerateToken(ctx, reqID)
+	token := generateToken(reqID)
 
 	return token
 }
@@ -213,7 +217,7 @@ func (s *SmartContract) RequestToken(ctx contractapi.TransactionContextInterface
 // adds the buyers to the subscription list for a subscriptionID and returns download token the buyer
 func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string, topic string, mode int, price float64) (error, string) {
 
-	subscriptionID := s.GenerateHash(ctx, (sid + buyerID))
+	subscriptionID := generateHash(sid + buyerID)
 
 	exists, err := s.subcriptionExists(ctx, subscriptionID)
 	if err != nil {
@@ -222,7 +226,7 @@ func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface
 	if !exists {
 		return fmt.Errorf("the subscription %s does not exist", subscriptionID), ""
 	}
-	token := s.RequestToken(ctx, buyerID, sid, topic, mode, price)
+	token := RequestToken(buyerID, sid, topic, mode, price)
 
 	subscription := Subscription{
 		SubscriptionID: subscriptionID,
@@ -240,7 +244,7 @@ func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface
 
 }
 
-func (s *SmartContract) GenerateHash(ctx contractapi.TransactionContextInterface, shaString string) string {
+func generateHash(shaString string) string {
 	h := sha1.New()
 	h.Write([]byte(shaString))
 	sha1_hash := hex.EncodeToString(h.Sum(nil))
