@@ -6,19 +6,28 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"iot_marketplaces.com/marketplace"
 )
 
 func authOnRegister(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	var data map[string]string
 	getBody(r, &data)
-
 	fmt.Println(data)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
+
+	actorparams, err := json.Marshal(data)
+	if err != nil {
+		writeRespError(w, map[string]string{"error": "parsing failed"})
 	}
 
-	authOnRegisterResp(w, result)
+	contract, gateway := marketplace.GetContractwithGateway()
+	defer gateway.Close()
+	result, err := contract.SubmitTransaction("AuthenticateActor", string(actorparams))
+
+	if err != nil {
+		writeRespError(w, map[string]string{"error": "authenticatation failed"})
+	}
+
+	fmt.Println(result)
 }
 
 func onRegister(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

@@ -35,13 +35,13 @@ type DataOffer struct {
 type Seller struct {
 	SellerID   string  `json:"ID"`
 	TrustScore float64 `json:"trustscore"`
-	Token      string  `json: SellerToken`
+	Token      string  `json: "Token"`
 }
 
 type Buyer struct {
 	BuyerID    string  `json:"ID"`
 	TrustScore float64 `json:"trustscore"`
-	Token      string  `json: BuyerToken`
+	Token      string  `json: "Token"`
 }
 
 type Subscription struct {
@@ -152,14 +152,14 @@ func (s *SmartContract) ActorExists(ctx contractapi.TransactionContextInterface,
 }
 
 //create a a list of data Offers in the world state and returns the Upload token to seller
-func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64, enc_key string, mac_key string) (error, string) {
+func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64, enc_key string, mac_key string) (string, error) {
 
 	exists, err := s.DataOfferExists(ctx, sid)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 	if exists {
-		return fmt.Errorf("the data offer %s already exists", sid), ""
+		return "", fmt.Errorf("the data offer %s already exists", sid)
 	}
 
 	dataUploadToken := RequestToken(id, sid, topic, mode, price)
@@ -175,10 +175,10 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 	}
 	offerJSON, err := json.Marshal(offer)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
-	return ctx.GetStub().PutState(sid, offerJSON), dataUploadToken
+	return dataUploadToken, ctx.GetStub().PutState(sid, offerJSON)
 
 }
 
@@ -215,16 +215,16 @@ func RequestToken(id string, sid string, topic string, mode int, price float64) 
 }
 
 // adds the buyers to the subscription list for a subscriptionID and returns download token the buyer
-func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string, topic string, mode int, price float64) (error, string) {
+func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string, topic string, mode int, price float64) (string, error) {
 
 	subscriptionID := generateHash(sid + buyerID)
 
 	exists, err := s.subcriptionExists(ctx, subscriptionID)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 	if !exists {
-		return fmt.Errorf("the subscription %s does not exist", subscriptionID), ""
+		return "", fmt.Errorf("the subscription %s does not exist", subscriptionID)
 	}
 	token := RequestToken(buyerID, sid, topic, mode, price)
 
@@ -237,11 +237,10 @@ func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface
 
 	valueJSON, err := json.Marshal(subscription)
 	if err != nil {
-		return err, ""
+		return "", err
 	}
 
-	return ctx.GetStub().PutState(subscriptionID, valueJSON), token
-
+	return token, ctx.GetStub().PutState(subscriptionID, valueJSON)
 }
 
 func generateHash(shaString string) string {
@@ -262,51 +261,51 @@ func (s *SmartContract) subcriptionExists(ctx contractapi.TransactionContextInte
 }
 
 //checks if seller with SellerID is authenticated to upload data with StreamID
-func (s *SmartContract) SellerAuthentication(ctx contractapi.TransactionContextInterface, sid string, sellerID string, token string) (error, bool) {
+func (s *SmartContract) SellerAuthentication(ctx contractapi.TransactionContextInterface, sid string, sellerID string, token string) (bool, error) {
 
 	dataJSON, err := ctx.GetStub().GetState(sid)
 	if err != nil {
-		return fmt.Errorf("failed to read from world state: %v", err), false
+		return false, fmt.Errorf("failed to read from world state: %v", err)
 	}
 
 	if dataJSON == nil {
-		return fmt.Errorf("the data %s does not exist", sid), false
+		return false, fmt.Errorf("the data %s does not exist", sid)
 	}
 
 	var data DataOffer
 	err = json.Unmarshal(dataJSON, &data)
 	if err != nil {
-		return err, false
+		return false, err
 	}
 
 	if data.SellerID == sellerID && data.UploadToken == token {
-		return nil, true
+		return true, nil
 	} else {
-		return fmt.Errorf("the seller %s is not authenticated", sellerID), false
+		return false, fmt.Errorf("the seller %s is not authenticated", sellerID)
 	}
 }
 
 //does this download token exists for this buyer
-func (s *SmartContract) BuyerAuthentication(ctx contractapi.TransactionContextInterface, subid string, buyerID string, token string) (error, bool) {
+func (s *SmartContract) BuyerAuthentication(ctx contractapi.TransactionContextInterface, subid string, buyerID string, token string) (bool, error) {
 
 	subJSON, err := ctx.GetStub().GetState(subid)
 	if err != nil {
-		return fmt.Errorf("failed to read from world state: %v", err), false
+		return false, fmt.Errorf("failed to read from world state: %v", err)
 	}
 
 	if subJSON == nil {
-		return fmt.Errorf("the subscription %s does not exist", subid), false
+		return false, fmt.Errorf("the subscription %s does not exist", subid)
 	}
 
 	var subcription Subscription
 	err = json.Unmarshal(subJSON, &subcription)
 	if err != nil {
-		return err, false
+		return false, err
 	}
 
 	if subcription.BuyerID == buyerID && subcription.DownloadToken == token {
-		return nil, true
+		return true, nil
 	} else {
-		return fmt.Errorf("the buyer %s is not authenticated", buyerID), false
+		return false, fmt.Errorf("the buyer %s is not authenticated", buyerID)
 	}
 }

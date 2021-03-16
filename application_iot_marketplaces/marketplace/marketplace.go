@@ -15,7 +15,7 @@ func RegisterBuyer(w http.ResponseWriter, r *http.Request, params httprouter.Par
 	getBody(r, &data)
 	buyerID := data["id"]
 
-	contract, gateway := getContractwithGateway()
+	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterBuyer", buyerID, "2")
 
@@ -36,7 +36,7 @@ func RegisterSeller(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	getBody(r, &data)
 	sellerID := data["id"]
 
-	contract, gateway := getContractwithGateway()
+	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterSeller", sellerID, "2")
 

@@ -11,7 +11,7 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/gateway"
 )
 
-func getContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
+func GetContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
 	wallet := wallet()
 
 	ccpPath := filepath.Join(
