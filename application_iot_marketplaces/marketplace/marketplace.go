@@ -18,6 +18,8 @@ func RegisterBuyer(w http.ResponseWriter, r *http.Request, params httprouter.Par
 	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterBuyer", buyerID, "2")
+	fmt.Println("register seller")
+	fmt.Println(result)
 
 	if err != nil {
 		log.Fatalf("Failed to submit transaction: %v", err)
@@ -39,6 +41,8 @@ func RegisterSeller(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterSeller", sellerID, "2")
+	fmt.Println("register seller")
+	fmt.Println(result)
 
 	if err != nil {
 		log.Fatalf("Failed to submit transaction: %v", err)

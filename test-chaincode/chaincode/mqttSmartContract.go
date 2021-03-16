@@ -30,3 +30,15 @@ func (s *SmartContract) AuthenticateActor(ctx contractapi.TransactionContextInte
 	err = json.Unmarshal(actorJSON, &recActor)
 	return recActor["Token"] == actor.token, err
 }
+
+// func (s *SmartContract) AuthorizeSubscription(ctx contractapi.TransactionContextInterface, actorInfo []byte) (bool, error) {
+
+// }
+
+// func (s *SmartContract) AuthorizePublish(ctx contractapi.TransactionContextInterface, actorInfo []byte) (bool, error) {
+
+// }
+
+// func (s *SmartContract) AddSubscriptionData(ctx contractapi.TransactionContextInterface, actorInfo []byte) error {
+
+// }

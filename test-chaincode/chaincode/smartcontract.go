@@ -95,50 +95,54 @@ type Subscription struct {
 }*/
 
 //RegisterSeller adds a new seller to the world state with given details.
-func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterface, id string, trustscore float64) error {
+func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterface, id string, trustscore float64) (string, error) {
 
 	exists, err := s.ActorExists(ctx, id)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if exists {
-		return fmt.Errorf("the seller %s already exists", id)
+		return "", fmt.Errorf("the seller %s already exists", id)
 	}
+
+	token := generateHash(id)
 
 	seller := Seller{
 		SellerID:   id,
 		TrustScore: trustscore,
-		Token:      generateHash(id),
+		Token:      token,
 	}
 	sellerJSON, err := json.Marshal(seller)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return ctx.GetStub().PutState(id, sellerJSON)
+	return token, ctx.GetStub().PutState(id, sellerJSON)
 }
 
 //RegisterBuyer adds a new buyer to the world state with given details.
-func (s *SmartContract) RegisterBuyer(ctx contractapi.TransactionContextInterface, id string, trustscore float64) error {
+func (s *SmartContract) RegisterBuyer(ctx contractapi.TransactionContextInterface, id string, trustscore float64) (string, error) {
 	exists, err := s.ActorExists(ctx, id)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if exists {
-		return fmt.Errorf("the buyer %s already exists", id)
+		return "", fmt.Errorf("the buyer %s already exists", id)
 	}
+
+	token := generateHash(id)
 
 	buyer := Buyer{
 		BuyerID:    id,
 		TrustScore: trustscore,
-		Token:      generateHash(id),
+		Token:      token,
 	}
 	buyerJSON, err := json.Marshal(buyer)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return ctx.GetStub().PutState(id, buyerJSON)
+	return token, ctx.GetStub().PutState(id, buyerJSON)
 }
 
 // SellerExists returns true when seller with given ID exists in world state
