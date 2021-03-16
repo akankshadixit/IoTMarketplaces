@@ -102,7 +102,7 @@ func (s *SmartContract) RegisterSeller(ctx contractapi.TransactionContextInterfa
 		return "", err
 	}
 	if exists {
-		return "", fmt.Errorf("the seller %s already exists", id)
+		return "", fmt.Errorf("User already exists")
 	}
 
 	token := generateHash(id)

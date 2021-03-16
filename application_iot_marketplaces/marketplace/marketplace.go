@@ -18,18 +18,17 @@ func RegisterBuyer(w http.ResponseWriter, r *http.Request, params httprouter.Par
 	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterBuyer", buyerID, "2")
-	fmt.Println("register seller")
-	fmt.Println(result)
 
 	if err != nil {
-		log.Fatalf("Failed to submit transaction: %v", err)
+		writeRespError(w, map[string]string{
+			"message": err.Error(),
+			"status":  "failed"})
 	}
 	if result != nil {
-		log.Fatalf("Some error occured on invocation: %v", err)
-
-		writeRespError(w, map[string]string{"error": "some error occured"})
-	} else {
-		writeRespOk(w, map[string]string{"message": "buyer added"})
+		writeRespOk(w, map[string]string{
+			"message": "buyer registered",
+			"status":  "success",
+			"token":   string(result)})
 	}
 }
 
@@ -41,18 +40,15 @@ func RegisterSeller(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 	contract, gateway := GetContractwithGateway()
 	defer gateway.Close()
 	result, err := contract.SubmitTransaction("RegisterSeller", sellerID, "2")
-	fmt.Println("register seller")
-	fmt.Println(result)
 
 	if err != nil {
-		log.Fatalf("Failed to submit transaction: %v", err)
+		writeRespError(w, map[string]string{"message": err.Error(), "status": "failed"})
 	}
 	if result != nil {
-		log.Fatalf("Some error occured on invocation: %v", err)
-
-		writeRespError(w, map[string]string{"error": "some error occured"})
-	} else {
-		writeRespOk(w, map[string]string{"message": "seller added"})
+		writeRespOk(w, map[string]string{
+			"message": "seller registered",
+			"status":  "success",
+			"token":   string(result)})
 	}
 }
 
@@ -88,7 +84,7 @@ func writeRespError(w http.ResponseWriter, result map[string]string) {
 		log.Fatal(err)
 		return
 	}
-	w.WriteHeader(http.StatusPreconditionFailed)
+	w.WriteHeader(http.StatusBadRequest)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(resultmap)
 }
