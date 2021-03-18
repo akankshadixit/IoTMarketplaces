@@ -1,20 +1,19 @@
 defmodule VernemqIoTPlugin do
 
-  def auth_on_register(_peer, {_mountpoint, clientid}, username, password, _clean_session?) do
+  def auth_on_register(_peer, {_mountpoint, _clientid}, username, password, _clean_session?) do
     path = "/mqtt-auth-on-register"
-
     url = server_url() <> path
-    params = %{clientid: clientid, username: username, password: password}
+    params = %{actorid: username, token: password}
     params = Jason.encode!(params)
-    headers = ["Accept": "Application/json; Charset=utf-8"]
+    headers = ["Accept": "*/*", "Content-Type": "application/json"]
     result = HTTPoison.post(url, params, headers)
+
     parse_auth_register(result)
-    :ok
   end
 
   defp parse_auth_register({:ok, message}) do
     message = Jason.decode!(message.body)
-    if message == "authenticated" do
+    if message["status"] == "success" do
       :ok
     else
       {:error, "authentication failed"}
@@ -48,8 +47,29 @@ defmodule VernemqIoTPlugin do
 
   # Subscribe flow
   def auth_on_subscribe(_username, {_mountpoint, clientid}, topics) do
-    IO.puts("*** auth_on_subscribe #{clientid}")
-    {:ok, topics}
+    [stream | _] = topics
+    path = "/mqtt-auth-on-subscribe"
+    url = server_url() <> path
+    params = %{buyerid: clientid, streamid: stream}
+    params = Jason.encode!(params)
+    headers = ["Accept": "*/*", "Content-Type": "application/json"]
+    result = HTTPoison.post(url, params, headers)
+
+    parse_auth_on_subscribe(result, topics)
+  end
+
+  defp parse_auth_on_subscribe({:ok, message}, topics) do
+    message = Jason.decode!(message.body)
+    if message["status"] == "success" do
+      {:ok, topics}
+    else
+      {:error, "authentication failed"}
+    end
+  end
+
+  defp parse_auth_on_subscribe({:error, message}, _topics) do
+    IO.inspect(message)
+    {:error, "some error occurred in registration"}
   end
 
   def on_subscribe(_username, {_mountpoint, clientid}, _topics) do
@@ -64,8 +84,28 @@ defmodule VernemqIoTPlugin do
 
   # Publish flow
   def auth_on_publish(_username, {_mountpoint, clientid}, _qos, topic, payload, _flag) do
-    IO.puts("*** auth_on_publish #{clientid} / #{topic} / #{payload}")
-    {:ok, payload}
+    path = "/mqtt-auth-on-publish"
+    url = server_url() <> path
+    params = %{sellerid: clientid, streamid: topic}
+    params = Jason.encode!(params)
+    headers = ["Accept": "*/*", "Content-Type": "application/json"]
+    result = HTTPoison.post(url, params, headers)
+
+    parse_auth_on_publish(result, payload)
+  end
+
+  defp parse_auth_on_publish({:ok, message}, payload) do
+    message = Jason.decode!(message.body)
+    if message["status"] == "success" do
+      {:ok, payload}
+    else
+      {:error, "authentication failed"}
+    end
+  end
+
+  defp parse_auth_on_publish({:error, message}, _payload) do
+    IO.inspect(message)
+    {:error, "some error occurred in registration"}
   end
 
   def on_publish(_username, {_mountpoint, clientid}, _qos, topic, payload, _retain?) do

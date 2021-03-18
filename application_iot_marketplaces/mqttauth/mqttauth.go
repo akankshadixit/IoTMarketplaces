@@ -95,12 +95,14 @@ func authOnPublish(w http.ResponseWriter, r *http.Request, params httprouter.Par
 	if err != nil {
 		writeRespError(w, map[string]string{"message": err.Error(),
 			"status": "failed"})
-	}
-
-	if string(result) == "true" {
+	} else if string(result) == "true" {
 		writeRespOk(w, map[string]string{
 			"message": "authorized",
 			"status":  "success"})
+	} else {
+		writeRespOk(w, map[string]string{
+			"message": "unauthorized",
+			"status":  "failed"})
 	}
 }
 
