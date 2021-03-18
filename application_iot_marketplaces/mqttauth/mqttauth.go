@@ -2,7 +2,6 @@ package mqttauth
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -40,55 +39,80 @@ func authOnRegister(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 
 }
 
-func onRegister(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println(params)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
-	}
+// func onRegister(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+// 	fmt.Println(params)
+// 	result := map[string]string{
+// 		"message": "authenticated",
+// 		"error":   "None",
+// 	}
 
-	onRegisterResp(w, result)
-}
+// 	onRegisterResp(w, result)
+// }
 
+// authOnSubscribe will check if the buyer has purchased the subscription
 func authOnSubscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println(params)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
+	var data map[string]string
+	getBody(r, &data)
+
+	contract, gateway := marketplace.GetContractwithGateway()
+	defer gateway.Close()
+	result, err := contract.SubmitTransaction("AuthorizeSubscription",
+		data["streamid"], data["buyerid"])
+
+	if err != nil {
+		writeRespError(w, map[string]string{"message": err.Error(),
+			"status": "failed"})
 	}
 
-	authOnSubscribeResp(w, result)
-}
-
-func onSubscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println(params)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
+	if string(result) == "true" {
+		writeRespOk(w, map[string]string{
+			"message": "authorized",
+			"status":  "success"})
 	}
-
-	onSubscribeResp(w, result)
 }
 
+// func onSubscribe(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+// 	fmt.Println(params)
+// 	result := map[string]string{
+// 		"message": "authenticated",
+// 		"error":   "None",
+// 	}
+
+// 	onSubscribeResp(w, result)
+// }
+
+// authOnPublish will check if the seller has added a data offer and is authorised
+// to publish on that particular topic.
 func authOnPublish(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println(params)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
+	var data map[string]string
+	getBody(r, &data)
+
+	contract, gateway := marketplace.GetContractwithGateway()
+	defer gateway.Close()
+	result, err := contract.SubmitTransaction("AuthorizePublish",
+		data["streamid"], data["sellerid"])
+
+	if err != nil {
+		writeRespError(w, map[string]string{"message": err.Error(),
+			"status": "failed"})
 	}
 
-	authOnPublishResp(w, result)
-}
-
-func onPublish(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println(params)
-	result := map[string]string{
-		"message": "authenticated",
-		"error":   "None",
+	if string(result) == "true" {
+		writeRespOk(w, map[string]string{
+			"message": "authorized",
+			"status":  "success"})
 	}
-
-	onPublishResp(w, result)
 }
+
+// func onPublish(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+// 	fmt.Println(params)
+// 	result := map[string]string{
+// 		"message": "authenticated",
+// 		"error":   "None",
+// 	}
+
+// 	onPublishResp(w, result)
+// }
 
 func getBody(req *http.Request, buffer *map[string]string) {
 	decoder := json.NewDecoder(req.Body)

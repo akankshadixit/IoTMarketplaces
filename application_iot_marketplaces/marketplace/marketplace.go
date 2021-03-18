@@ -2,7 +2,6 @@ package marketplace
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -53,11 +52,46 @@ func RegisterSeller(w http.ResponseWriter, r *http.Request, params httprouter.Pa
 }
 
 func AddDataOffer(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println("add data offer")
+	var data map[string]string
+	getBody(r, &data)
+
+	contract, gateway := GetContractwithGateway()
+	defer gateway.Close()
+
+	result, err := contract.SubmitTransaction("AddDataOffers", data["sellerid"],
+		data["streamid"], data["mode"], data["price"], data["enc_key"],
+		data["mac_key"])
+
+	if err != nil {
+		writeRespError(w, map[string]string{"message": err.Error(),
+			"status": "failed"})
+	} else {
+		writeRespOk(w, map[string]string{
+			"message": "data offer added",
+			"status":  "success",
+			"token":   string(result)})
+	}
 }
 
 func PurchaseData(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	fmt.Println("purchase data")
+	var data map[string]string
+	getBody(r, &data)
+
+	contract, gateway := GetContractwithGateway()
+	defer gateway.Close()
+
+	result, err := contract.SubmitTransaction("PurchaseData", data["streamid"],
+		data["buyerid"])
+
+	if err != nil {
+		writeRespError(w, map[string]string{"message": err.Error(),
+			"status": "failed"})
+	} else {
+		writeRespOk(w, map[string]string{
+			"message": "data purchase success",
+			"status":  "success",
+			"token":   string(result)})
+	}
 }
 
 func getBody(req *http.Request, buffer *map[string]string) {

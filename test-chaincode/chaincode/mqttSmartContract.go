@@ -45,13 +45,54 @@ func (s *SmartContract) AuthenticateActor(ctx contractapi.TransactionContextInte
 	}
 }
 
-// func (s *SmartContract) AuthorizeSubscription(ctx contractapi.TransactionContextInterface, actorInfo []byte) (bool, error) {
+func (s *SmartContract) AuthorizeSubscription(ctx contractapi.TransactionContextInterface, streamid string, buyerid string) (bool, error) {
+	subscriptionID := generateHash(streamid + buyerid)
 
-// }
+	subscription, err := ctx.GetStub().GetState(subscriptionID)
 
-// func (s *SmartContract) AuthorizePublish(ctx contractapi.TransactionContextInterface, actorInfo []byte) (bool, error) {
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state %v", err)
+	}
+	if len(subscription) == 0 {
+		return false, fmt.Errorf("subscription not found")
+	}
 
-// }
+	var subs Subscription
+	err = json.Unmarshal(subscription, &subs)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal data %v", err)
+	}
+
+	if subs.BuyerID == buyerid && subs.StreamID == streamid {
+		return true, err
+	} else {
+		return false, err
+	}
+}
+
+func (s *SmartContract) AuthorizePublish(ctx contractapi.TransactionContextInterface, streamid string, sellerid string) (bool, error) {
+	dataoffer, err := ctx.GetStub().GetState(streamid)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state %v", err)
+	}
+	if len(dataoffer) == 0 {
+		return false, fmt.Errorf("subscription not found")
+	}
+
+	var offer DataOffer
+	err = json.Unmarshal(dataoffer, &offer)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal data %v", err)
+	}
+	if offer.SellerID == sellerid && offer.StreamID == streamid {
+		return true, err
+	} else {
+		return false, err
+	}
+}
 
 // func (s *SmartContract) AddSubscriptionData(ctx contractapi.TransactionContextInterface, actorInfo []byte) error {
 

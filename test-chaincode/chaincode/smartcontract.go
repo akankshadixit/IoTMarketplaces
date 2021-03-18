@@ -24,7 +24,6 @@ type SmartContract struct {
 type DataOffer struct {
 	SellerID    string  `json:"ID"`
 	StreamID    string  `json:"streamID"`
-	Topic       string  `json:"topic"`
 	Mode        int     `json:"mode"`
 	Price       float64 `json:"price"`
 	EncKey      string  `json:"enc_key"`
@@ -156,7 +155,7 @@ func (s *SmartContract) ActorExists(ctx contractapi.TransactionContextInterface,
 }
 
 //create a a list of data Offers in the world state and returns the Upload token to seller
-func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, topic string, mode int, price float64, enc_key string, mac_key string) (string, error) {
+func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterface, id string, sid string, mode int, price float64, enc_key string, mac_key string) (string, error) {
 
 	exists, err := s.DataOfferExists(ctx, sid)
 	if err != nil {
@@ -166,11 +165,10 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 		return "", fmt.Errorf("the data offer %s already exists", sid)
 	}
 
-	dataUploadToken := RequestToken(id, sid, topic, mode, price)
+	dataUploadToken := generateHash(sid)
 	offer := DataOffer{
 		SellerID:    id,
 		StreamID:    sid,
-		Topic:       topic,
 		Mode:        mode,
 		Price:       price,
 		EncKey:      enc_key,
@@ -179,6 +177,7 @@ func (s *SmartContract) AddDataOffers(ctx contractapi.TransactionContextInterfac
 	}
 	offerJSON, err := json.Marshal(offer)
 	if err != nil {
+		fmt.Println("some error occured in offerJson")
 		return "", err
 	}
 
@@ -211,15 +210,15 @@ func generateToken(reqID string) string {
 }
 
 // Returns token to both seller and buyer for uploading and downloading data
-func RequestToken(id string, sid string, topic string, mode int, price float64) string {
-	reqID := id + sid + topic + strconv.Itoa(mode) + strconv.FormatFloat(price, 'E', -1, 64)
+func RequestToken(id string, sid string, mode int, price float64) string {
+	reqID := id + sid + strconv.Itoa(mode) + strconv.FormatFloat(price, 'E', -1, 64)
 	token := generateToken(reqID)
 
 	return token
 }
 
 // adds the buyers to the subscription list for a subscriptionID and returns download token the buyer
-func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string, topic string, mode int, price float64) (string, error) {
+func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface, sid string, buyerID string) (string, error) {
 
 	subscriptionID := generateHash(sid + buyerID)
 
@@ -227,10 +226,10 @@ func (s *SmartContract) PurchaseData(ctx contractapi.TransactionContextInterface
 	if err != nil {
 		return "", err
 	}
-	if !exists {
-		return "", fmt.Errorf("the subscription %s does not exist", subscriptionID)
+	if exists {
+		return "", fmt.Errorf("the subscription already exists %v", subscriptionID)
 	}
-	token := RequestToken(buyerID, sid, topic, mode, price)
+	token := generateHash(sid + subscriptionID)
 
 	subscription := Subscription{
 		SubscriptionID: subscriptionID,
