@@ -1,6 +1,6 @@
 defmodule VernemqIoTPlugin do
 
-  def auth_on_register(_peer, {_mountpoint, _clientid}, username, password, _clean_session?) do
+  def auth_on_register(_peer, {_mountpoint, clientid}, username, password, _clean_session?) do
     path = "/mqtt-auth-on-register"
     url = server_url() <> path
     params = %{actorid: username, token: password}
@@ -47,27 +47,27 @@ defmodule VernemqIoTPlugin do
 
   # Subscribe flow
   def auth_on_subscribe(_username, {_mountpoint, clientid}, topics) do
-    [stream | _] = topics
+    [{[topic| _], _qos}|_] = topics
     path = "/mqtt-auth-on-subscribe"
     url = server_url() <> path
-    params = %{buyerid: clientid, streamid: stream}
+    params = %{buyerid: clientid, streamid: topic}
     params = Jason.encode!(params)
     headers = ["Accept": "*/*", "Content-Type": "application/json"]
     result = HTTPoison.post(url, params, headers)
 
-    parse_auth_on_subscribe(result, topics)
+    parse_auth_on_subscribe(result)
   end
 
-  defp parse_auth_on_subscribe({:ok, message}, topics) do
+  defp parse_auth_on_subscribe({:ok, message}) do
     message = Jason.decode!(message.body)
     if message["status"] == "success" do
-      {:ok, topics}
+      :ok
     else
       {:error, "authentication failed"}
     end
   end
 
-  defp parse_auth_on_subscribe({:error, message}, _topics) do
+  defp parse_auth_on_subscribe({:error, message}) do
     IO.inspect(message)
     {:error, "some error occurred in registration"}
   end
@@ -83,7 +83,8 @@ defmodule VernemqIoTPlugin do
   end
 
   # Publish flow
-  def auth_on_publish(_username, {_mountpoint, clientid}, _qos, topic, payload, _flag) do
+  def auth_on_publish(_username, {_mountpoint, clientid}, _qos, topics, payload, _flag) do
+    [topic | _] = topics
     path = "/mqtt-auth-on-publish"
     url = server_url() <> path
     params = %{sellerid: clientid, streamid: topic}
@@ -103,8 +104,7 @@ defmodule VernemqIoTPlugin do
     end
   end
 
-  defp parse_auth_on_publish({:error, message}, _payload) do
-    IO.inspect(message)
+  defp parse_auth_on_publish({:error, _message}, _payload) do
     {:error, "some error occurred in registration"}
   end
 

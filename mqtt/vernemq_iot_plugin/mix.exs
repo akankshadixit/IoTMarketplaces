@@ -30,7 +30,7 @@ defmodule VernemqIoTPlugin.MixProject do
       mod: {VernemqIoTPlugin.Application, []},
       env: [
         vmq_plugin_hooks(),
-        server_url: System.get_env("SERVER_URL", "localhost:8080"),
+        server_url: System.get_env("SERVER_URL", "http://172.17.0.1:8080"),
       ]
     ]
   end

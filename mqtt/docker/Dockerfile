@@ -31,7 +31,7 @@ RUN mix deps.get
 RUN mix deps.compile
 RUN mix release
 
-FROM vernemq/vernemq:latest-alpine
+FROM vernemq/vernemq:1.10.3-alpine
 
 WORKDIR /home/app
 

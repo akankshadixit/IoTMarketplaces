@@ -12,7 +12,7 @@ services:
       - vernemqdata:/vernemq/data
       - vernemqlogs:/vernemq/logs
       - vernemqetc:/vernemq/etc
-
+      
 volumes: 
   vernemqdata:
   vernemqlogs:
