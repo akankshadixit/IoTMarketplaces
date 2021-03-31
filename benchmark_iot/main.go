@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	printHelp()
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var text string
@@ -18,10 +19,10 @@ func main() {
 		text = scanner.Text()
 		if text != "q" {
 			switch text {
-			case "ClientUpload":
+			case "1":
 				fmt.Println("Client Upload invoked")
 				streamtest.ClientUpload()
-			case "ClientDownload":
+			case "2":
 				fmt.Println("Client Download invoked")
 				streamtest.ClientDownload()
 			default:
@@ -35,6 +36,7 @@ func main() {
 func printHelp() {
 	fmt.Println("The tool will help you benchmark the app.")
 	fmt.Println("Enter q to exit")
-	fmt.Print("List of functions you can choose from, please enter the correct name.\n\n")
+	fmt.Print("List of functions you can choose from, please enter the correct number.\n\n")
 	fmt.Print("1. ClientUpload\n\n")
+	fmt.Print("2. ClientDownload\n\n")
 }
