@@ -3,7 +3,7 @@ services:
   nginx:
     image: nginx:1.19.8-alpine
     ports:
-      - "8080:80"
+      - "8088:80"
       - "1882:1883"
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     volumes:
