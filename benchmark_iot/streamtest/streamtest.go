@@ -121,7 +121,7 @@ func printResults(results []*RunResults, totals *TotalResults, format string, fi
 		defer writer.Flush()
 
 		writer.Write([]string{
-			"ClientId, Ratio", "Runtime(s)", "Msg time min (ms)", "Msg time max (ms)",
+			"ClientId", "Ratio", "Runtime(s)", "Msg time min (ms)", "Msg time max (ms)",
 			"Msg time mean (ms)", "Msg time std (ms)", "Bandwidth (msg/sec)"})
 		for _, res := range results {
 			writer.Write([]string{
