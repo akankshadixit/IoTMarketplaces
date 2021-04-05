@@ -39,7 +39,7 @@ func ClientUpload(clients int, messagesize, messagecount int, filename string) {
 	resch := make(chan *RunResults)
 	start := time.Now()
 	for i := 0; i < clients; i++ {
-		go runUpload(i+100, resch, messagesize, messagecount)
+		go runUpload(i+20, resch, messagesize, messagecount)
 	}
 
 	results := make([]*RunResults, clients)

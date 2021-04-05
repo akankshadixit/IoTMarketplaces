@@ -66,8 +66,14 @@ func runUpload(i int, res chan *RunResults, messagesize int, messagecount int) {
 		return
 	}
 
+	_, err = AddDataOffer(fmt.Sprintf("seller%v", i), fmt.Sprintf("timeseries_%v", i))
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	c := &Client{
-		ClientID:    fmt.Sprintf("seller_%v", i),
+		ClientID:    fmt.Sprintf("seller%v", i),
 		BrokerURL:   fmt.Sprintf("tcp://%v:%v", broker, port),
 		Username:    fmt.Sprintf("seller_seller%v", i),
 		Password:    sellerdata["token"],
@@ -143,6 +149,7 @@ func authenticateAndPublish(c *Client, in, out chan *Message, doneGen, donePub c
 				m.Sent = time.Now()
 				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
 				res := token.WaitTimeout(c.WaitTimeout)
+				fmt.Println(res)
 				if !res {
 					log.Printf("CLIENT %v Timeout sending message: %v\n", c.ClientID, token.Error())
 					m.Error = true
@@ -208,6 +215,39 @@ func RegisterSeller(sellerid string) (map[string]string, error) {
 	}
 
 	resp, err := http.Post("http://127.0.0.1:8080/register-seller", "application/json", bytes.NewBuffer(requestbody))
+
+	if err != nil {
+		log.Fatal(err)
+		return data, err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if data["status"] == "failed" {
+		err = fmt.Errorf("some error occurred %v", data["message"])
+	}
+
+	return data, err
+}
+
+func AddDataOffer(sellerid, streamid string) (map[string]string, error) {
+	var data map[string]string
+
+	requestbody, err := json.Marshal(map[string]string{
+		"sellerid": sellerid,
+		"streamid": streamid,
+		"mode":     "0",
+		"price":    "20",
+		"mac_key":  "abcd1233",
+		"enc_key":  "abcd12333",
+	})
+
+	if err != nil {
+		log.Fatal(err)
+		return data, err
+	}
+
+	resp, err := http.Post("http://127.0.0.1:8080/add-dataoffer", "application/json", bytes.NewBuffer(requestbody))
 
 	if err != nil {
 		log.Fatal(err)
