@@ -17,7 +17,7 @@ func GetContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
 	ccpPath := filepath.Join(
 		"..",
 		"networks",
-		"single-node",
+		"2node",
 		"organizations",
 		"peerOrganizations",
 		"org1.example.com",
@@ -32,7 +32,7 @@ func GetContractwithGateway() (*gateway.Contract, *gateway.Gateway) {
 		fmt.Printf("Failed to connect to gateway: %s\n", err)
 		os.Exit(1)
 	}
-	defer gw.Close()
+	// defer gw.Close()
 
 	network, err := gw.GetNetwork("mychannel")
 	if err != nil {
@@ -67,7 +67,7 @@ func populateWallet(wallet *gateway.Wallet) error {
 	credPath := filepath.Join(
 		"..",
 		"networks",
-		"single-node",
+		"2node",
 		"organizations",
 		"peerOrganizations",
 		"org1.example.com",
